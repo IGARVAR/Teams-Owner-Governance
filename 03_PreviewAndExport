@@ -1,0 +1,39 @@
+<#
+README — 03_PreviewAndExport.ps1
+
+Purpose:
+Optional module to preview and export Teams with only one owner.
+- Displays the collected data in table format
+- Saves to CSV for further review or audit purposes
+
+Inputs:
+- Requires $oneOwnerTeams variable from 02_GetTeamsAndOwners.ps1
+
+Outputs:
+- Exports data to "Teams_OneOwner_Export.csv" in user's Documents folder
+
+Usage:
+Run after collecting team-owner data.
+Useful for reviewing the list before triggering notifications.
+
+Part of the modular set:
+  01_ConfigAndConnect.ps1     - Connects to Teams
+  02_GetTeamsAndOwners.ps1    - Gathers Teams and owners
+  03_PreviewAndExport.ps1     - This script
+  04_SendNotifications.ps1    - Sends email alerts
+  05_ReportToSelf.ps1         - Sends summary report
+  Run_TeamsNotifyJob.ps1      - Wrapper to orchestrate all steps
+
+Author: Ivan G. | Cleaned for public use
+#>
+
+if (-not $oneOwnerTeams) {
+    Write-Host "❗ oneOwnerTeams variable is not defined. Run 02_GetTeamsAndOwners.ps1 first." -ForegroundColor Red
+    return
+}
+
+$exportPath = "$env:USERPROFILE\Documents\Teams_OneOwner_Export.csv"
+Write-Host "💾 Exporting list to: $exportPath" -ForegroundColor Cyan
+
+$oneOwnerTeams | Sort-Object TeamName | Format-Table -AutoSize
+$oneOwnerTeams | Export-Csv -Path $exportPath -NoTypeInformation -Encoding UTF8
