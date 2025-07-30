@@ -44,3 +44,14 @@ This PowerShell-based automation scans Microsoft Teams for ownership gaps and se
 3. Run the script:
    ```powershell
    .\Main.ps1
+
+## 🧩 Modular Breakdown
+01_GetTeams.ps1: Collects all Teams and their owners
+
+02_AnalyzeTeams.ps1: Filters down to only single-owner Teams
+
+03_NotifyOwners.ps1: Sends email notifications
+
+04_ReportToSelf.ps1: Sends a summary report to admin
+
+05_Main.ps1: Orchestrates the process (entry point)
