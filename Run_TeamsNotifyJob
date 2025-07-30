@@ -1,0 +1,58 @@
+<#
+README — Run_TeamsNotifyJob.ps1
+
+Purpose:
+This is the master script that orchestrates the full Teams ownership notification pipeline:
+- Loads configuration and credentials
+- Retrieves all Teams and their owners
+- Filters for Teams with only one owner
+- Optionally previews/export results
+- Sends targeted email alerts
+- Sends summary report to admin
+
+Usage:
+Simply run this script in PowerShell with appropriate permissions and pre-exported credentials.
+
+Assumptions:
+- All other module scripts (01–05) are in the same directory
+- Credential file and SMTP parameters are defined in 01_ConfigAndConnect.ps1
+
+Part of the modular set:
+  01_ConfigAndConnect.ps1     - Connects to Teams
+  02_GetTeamsAndOwners.ps1    - Collects Teams and owners
+  03_PreviewAndExport.ps1     - Optional: outputs to file
+  04_SendNotifications.ps1    - Sends alerts to owners
+  05_ReportToSelf.ps1         - Sends summary report
+  Run_TeamsNotifyJob.ps1      - This script
+
+Author: Ivan G. | Cleaned for public use
+#>
+<#
+README — Run_TeamsNotifyJob.ps1
+
+Purpose:
+This is the master script that orchestrates the full Teams ownership notification pipeline:
+- Loads configuration and credentials
+- Retrieves all Teams and their owners
+- Filters for Teams with only one owner
+- Optionally previews/export results
+- Sends targeted email alerts
+- Sends summary report to admin
+
+Usage:
+Simply run this script in PowerShell with appropriate permissions and pre-exported credentials.
+
+Assumptions:
+- All other module scripts (01–05) are in the same directory
+- Credential file and SMTP parameters are defined in 01_ConfigAndConnect.ps1
+
+Part of the modular set:
+  01_ConfigAndConnect.ps1     - Connects to Teams
+  02_GetTeamsAndOwners.ps1    - Collects Teams and owners
+  03_PreviewAndExport.ps1     - Optional: outputs to file
+  04_SendNotifications.ps1    - Sends alerts to owners
+  05_ReportToSelf.ps1         - Sends summary report
+  Run_TeamsNotifyJob.ps1      - This script
+
+Author: Ivan G. | Cleaned for public use
+#>
