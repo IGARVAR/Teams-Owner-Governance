@@ -1,0 +1,76 @@
+<#
+README — 05_ReportToSelf.ps1
+
+Purpose:
+Sends an internal summary report to the script administrator.
+- Flattens the discovered Teams with one owner into a simple table
+- Generates an HTML summary report
+- Attaches the job execution log for auditing
+
+Output:
+- Sends an email to the test/admin recipient with:
+  - HTML table of Teams with one owner
+  - Attached CSV log file
+
+Dependencies:
+- Requires prior definition of:
+  $oneOwnerTeams (from 02_GetTeamsAndOwners.ps1)
+  $testRecipient, $sender, $smtpServer, $logOutput
+
+Part of the modular set:
+  01_ConfigAndConnect.ps1     - Connects to Teams
+  02_GetTeamsAndOwners.ps1    - Collects Teams and owners
+  03_PreviewAndExport.ps1     - Optional: outputs to file
+  04_SendNotifications.ps1    - Sends alerts to owners
+  05_ReportToSelf.ps1         - This script
+  Run_TeamsNotifyJob.ps1      - Wrapper to orchestrate all steps
+
+Author: Ivan G. | Cleaned for public use
+#>
+# === Flatten data ===
+$flatOneOwnerTeams = foreach ($entry in $oneOwnerTeams) {
+    foreach ($email in ($entry.OwnerEmails -split ';')) {
+        [PSCustomObject]@{
+            OwnerEmail = $email.Trim()
+            TeamName   = $entry.TeamName
+        }
+    }
+}
+
+# === Build HTML table rows ===
+$oneOwnerTableRows = @(
+    $flatOneOwnerTeams | Sort-Object OwnerEmail, TeamName | ForEach-Object {
+        "<tr><td>$($_.OwnerEmail)</td><td>$($_.TeamName)</td></tr>"
+    }
+) -join "`n"
+
+# === Email body ===
+$reportBody = @"
+<html>
+  <body style="font-family:Segoe UI, sans-serif; font-size:13px;">
+    <p>Hi Admin,</p>
+    <p>Summary report for the Teams ownership check performed on <b>$(Get-Date)</b>:</p>
+    <table border="1" cellpadding="4" cellspacing="0" style="border-collapse:collapse;">
+      <thead style="background:#f2f2f2;">
+        <tr><th>Owner Email</th><th>Team Name</th></tr>
+      </thead>
+      <tbody>
+        $oneOwnerTableRows
+      </tbody>
+    </table>
+    <br/>
+    <p>— MS Teams Automation Bot</p>
+  </body>
+</html>
+"@
+
+# === Send summary ===
+try {
+    Write-Host "`n📤 Sending summary report to admin..." -ForegroundColor Cyan
+    Send-MailMessage -From $sender -To $testRecipient -Subject "MS Teams Ownership Notification Summary" `
+        -Body $reportBody -BodyAsHtml -SmtpServer $smtpServer -Encoding UTF8 -Attachments $logOutput
+
+    Write-Host "✅ Summary sent to $testRecipient" -ForegroundColor Green
+} catch {
+    Write-Host "❌ Failed to send summary report: $($_.Exception.Message)" -ForegroundColor Red
+}
