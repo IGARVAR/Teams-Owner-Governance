@@ -1,0 +1,118 @@
+<#
+README — 04_SendNotifications.ps1
+
+Purpose:
+Sends notification emails to owners of Microsoft Teams that currently have no backup owner.
+- Supports 3 modes: ALL, TEST, or SELECT
+- Generates HTML-formatted messages with list of affected Teams
+- Logs activity with timestamps
+
+Modes:
+- ALL: Notify all discovered single-owners
+- TEST: Send only to a predefined test recipient
+- SELECT: Manually pick specific recipients from discovered emails
+
+Inputs:
+- $oneOwnerTeams (from 02_GetTeamsAndOwners.ps1)
+- $testRecipient, $sender, $smtpServer, $logOutput, etc.
+
+Notes:
+- Requires connection to Microsoft Teams
+- Respects privacy by allowing selective notification
+
+Part of the modular set:
+  01_ConfigAndConnect.ps1     - Connects to Teams
+  02_GetTeamsAndOwners.ps1    - Collects Teams and owners
+  03_PreviewAndExport.ps1     - Optional: outputs to CSV
+  04_SendNotifications.ps1    - This script
+  05_ReportToSelf.ps1         - Sends admin summary
+  Run_TeamsNotifyJob.ps1      - Wrapper to orchestrate all steps
+
+Author: Ivan G. | Cleaned for public use
+#>
+# === Choose Mode ===
+$emailMode = Read-Host "`nSend individual mail per owner (ALL), just TEST, or SELECT specific recipients? (ALL/TEST/SELECT)"
+if ($emailMode -notin @("ALL", "TEST", "SELECT")) {
+    Write-Host "❌ Invalid mode" -ForegroundColor Red
+    return
+}
+
+# === Init log file ===
+if (-not (Test-Path $logOutput)) {
+    "Timestamp,Email,Teams,Mode,Status" | Out-File $logOutput -Encoding UTF8
+}
+
+# === Prepare owners list ===
+switch ($emailMode) {
+    "ALL" {
+        $ownersList = ($oneOwnerTeams.OwnerEmails -split ';' | Sort-Object -Unique)
+        $notifiedTeams = $oneOwnerTeams
+    }
+    "TEST" {
+        $ownersList = @($testRecipient)
+        $notifiedTeams = @([PSCustomObject]@{
+            TeamName     = "SampleTeam_TestOnly"
+            TeamId       = "test-guid"
+            OwnerCount   = 1
+            OwnerNames   = "Test User"
+            OwnerEmails  = $testRecipient
+        })
+    }
+    "SELECT" {
+        $discoveredEmails = ($oneOwnerTeams.OwnerEmails -split ';' | Sort-Object -Unique)
+        Write-Host "`nDiscovered recipients:" -ForegroundColor Cyan
+        $discoveredEmails | ForEach-Object { Write-Host " - $_" }
+
+        $inputEmails = Read-Host "Enter comma-separated list of emails to notify (as seen above)"
+        $ownersList = $inputEmails -split ',' | ForEach-Object { $_.Trim() }
+        $notifiedTeams = $oneOwnerTeams | Where-Object {
+            ($_.OwnerEmails -split ';' | ForEach-Object { $_.Trim() }) -match ($ownersList -join '|')
+        }
+    }
+}
+
+# === Send emails ===
+foreach ($tmOwner in $ownersList) {
+    $ownedTeams = $notifiedTeams | Where-Object { $_.OwnerEmails -like "*$tmOwner*" }
+    if (-not $ownedTeams) { continue }
+
+    $teamListHtml = ($ownedTeams.TeamName | ForEach-Object { "<li>$_</li>" }) -join "`n"
+    $subject = if ($emailMode -eq "ALL") {
+        "⚠️ Action Required: Your Microsoft Teams has only one owner"
+    } elseif ($emailMode -eq "SELECT") {
+        "⚠️ NOTICE: Sole Ownership Alert - Your MS Teams"
+    } else {
+        "TEST ONLY: MS Teams Owner Notification"
+    }
+
+    $body = @"
+<html>
+  <body style="font-family:Segoe UI, sans-serif; font-size:14px;">
+    <div style="max-width:600px;margin:0 auto;padding:20px;border:1px solid #e0e0e0;border-radius:8px;">
+      <h2 style="color:#0078d4;">⚠️ Action Required: Your Microsoft Teams has only one owner</h2>
+      <p>Apologies if this is a repeat — this version includes an updated guidance link.</p>
+      <p>We've identified that the following Teams you own currently have no backup owner:</p>
+      <ul>
+        $teamListHtml
+      </ul>
+      <p>To avoid access issues in case of vacation, sick leave, or departure, please consider adding at least one more owner to each Team.</p>
+      <p><a href="https://yourcompany.sharepoint.com/sites/YourPortal/SitePages/Teams-Ownership-Guidance.aspx" style="color:#0078d4;">Click here to review internal guidance</a></p>
+      <br/>
+      <p>Thank you for your understanding and support!<br/>— ICT and Governance Team</p>
+    </div>
+  </body>
+</html>
+"@
+
+    try {
+        Write-Host "`n📬 Sending to: $tmOwner" -ForegroundColor Yellow
+        Send-MailMessage -From $sender -To $tmOwner -Subject $subject `
+            -Body $body -BodyAsHtml -SmtpServer $smtpServer -Encoding UTF8
+
+        $teamNamesJoined = ($ownedTeams.TeamName -join ';')
+        $timestamp = (Get-Date).ToString('s')
+        "$timestamp,$tmOwner,""$teamNamesJoined"",$emailMode,Sent" | Add-Content $logOutput
+    } catch {
+        Write-Host "❌ ERROR sending to ${tmOwner}: $($_.Exception.Message)" -ForegroundColor Red
+    }
+}
