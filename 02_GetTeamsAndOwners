@@ -1,0 +1,64 @@
+<#
+README — 02_GetTeamsAndOwners.ps1
+
+Purpose:
+Collects all Microsoft Teams and their associated owners.
+- Uses Microsoft Teams PowerShell module
+- Builds a list of Teams and extracts owner names and emails
+- Filters down to identify Teams with exactly one owner
+
+Output:
+$oneOwnerTeams — Array of objects with:
+  TeamName, TeamId, OwnerCount, OwnerNames, OwnerEmails
+
+Notes:
+- Requires connection to Microsoft Teams (via 01_ConfigAndConnect.ps1)
+- Skips Teams with no owner or where lookup fails
+
+Part of the modular set:
+  01_ConfigAndConnect.ps1     - Connects to Teams
+  02_GetTeamsAndOwners.ps1    - This script
+  03_PreviewAndExport.ps1     - Optional: outputs teams to file
+  04_SendNotifications.ps1    - Sends email alerts
+  05_ReportToSelf.ps1         - Sends summary report
+  Run_TeamsNotifyJob.ps1      - Wrapper to orchestrate all steps
+
+Author: Ivan G. | Cleaned for public use
+#>
+
+Write-Host "📥 Retrieving all Teams..." -ForegroundColor Yellow
+$allTeams = Get-Team
+Write-Host "✅ Total Teams found: $($allTeams.Count)" -ForegroundColor Green
+
+$results = @()
+$count = 0
+
+foreach ($team in $allTeams) {
+    $count++
+    Write-Host "🔍 [$count/$($allTeams.Count)] Checking owners: $($team.DisplayName)" -ForegroundColor Gray
+
+    try {
+        $owners = Get-TeamUser -GroupId $team.GroupId -Role Owner
+
+        $results += [PSCustomObject]@{
+            TeamName     = $team.DisplayName
+            TeamId       = $team.GroupId
+            OwnerCount   = $owners.Count
+            OwnerNames   = ($owners.DisplayName -join "; ")
+            OwnerEmails  = ($owners.User -join "; ")
+        }
+    } catch {
+        Write-Host "❌ Failed: $($team.DisplayName)" -ForegroundColor Red
+
+        $results += [PSCustomObject]@{
+            TeamName     = $team.DisplayName
+            TeamId       = $team.GroupId
+            OwnerCount   = "ERROR"
+            OwnerNames   = "ERROR"
+            OwnerEmails  = "ERROR"
+        }
+    }
+}
+
+# Filter down to Teams with only one owner
+$oneOwnerTeams = $results | Where-Object { $_.OwnerCount -eq 1 }
