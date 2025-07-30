@@ -1,0 +1,39 @@
+<#
+README — 01_ConfigAndConnect.ps1
+
+Purpose:
+Initial configuration and authentication for Microsoft Teams.
+- Loads SMTP and script parameters
+- Imports stored credentials
+- Connects to Microsoft Teams via PowerShell
+
+Usage:
+Ensure credentials are exported via Export-CliXml beforehand:
+  Get-Credential | Export-CliXml -Path "$env:USERPROFILE\SRV_MsTeamsConfig.Cred"
+
+Then run this script as the first step in the Teams ownership notification pipeline.
+
+Part of the modular set:
+  01_ConfigAndConnect.ps1     - This script
+  02_GetTeamsAndOwners.ps1    - Collects Teams and owners
+  03_PreviewAndExport.ps1     - Optional: outputs teams to file
+  04_SendNotifications.ps1    - Sends email alerts
+  05_ReportToSelf.ps1         - Sends summary report
+  Run_TeamsNotifyJob.ps1      - Wrapper to orchestrate all steps
+
+Author: Ivan G. | Cleaned for public use
+#>
+
+
+
+# === CONFIG ===
+$smtpServer         = "smtp.contoso.com"
+$sender             = "noreply@contoso.com"
+$testRecipient      = "admin@contoso.com"
+$logOutput          = "$env:USERPROFILE\Reports\Teams_Owner_Notify_Log.csv"
+$CredentialFilePath = "$env:USERPROFILE\MsTeams.Cred"
+
+# === Connect ===
+Write-Host "🔐 Connecting to Microsoft Teams..." -ForegroundColor Cyan
+$CREDENTIAL = Import-CliXml -Path $CredentialFilePath
+Connect-MicrosoftTeams -Credential $CREDENTIAL
