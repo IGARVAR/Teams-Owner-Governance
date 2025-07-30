@@ -29,7 +29,7 @@ This PowerShell-based automation scans Microsoft Teams for ownership gaps and se
 ## 🧱 Requirements
 
 - PowerShell 5.1+  
-- Microsoft Graph PowerShell SDK (Teams module)  
+- Microsoft Teams PowerShell Module  
 - Valid SMTP relay/server for `Send-MailMessage`  
 - Read access to Microsoft Teams ownership data  
 - Admin permissions (or delegated rights) to enumerate Teams and owners
@@ -39,19 +39,28 @@ This PowerShell-based automation scans Microsoft Teams for ownership gaps and se
 ## 🧪 Usage
 
 1. Clone or download the repo  
-2. Open `Main.ps1` and set:
-   - `$smtpServer`, `$sender`, `$testRecipient`, `$logOutput` paths  
-3. Run the script:
+2. Prepare credentials with:
    ```powershell
-   .\Main.ps1
+   Get-Credential | Export-CliXml -Path "$env:USERPROFILE\SRV_MsTeamsConfig.Cred"
+   ```
+3. Review and update config values inside `01_ConfigAndConnect.ps1`
+4. Run the master script:
+   ```powershell
+   .\Run_TeamsNotifyJob.ps1
+   ```
+
+---
 
 ## 🧩 Modular Breakdown
-01_GetTeams.ps1: Collects all Teams and their owners
 
-02_AnalyzeTeams.ps1: Filters down to only single-owner Teams
+`01_ConfigAndConnect.ps1` – Loads parameters and connects to Teams
 
-03_NotifyOwners.ps1: Sends email notifications
+`02_GetTeamsAndOwners.ps1` – Retrieves all Teams and their owners
 
-04_ReportToSelf.ps1: Sends a summary report to admin
+`03_PreviewAndExport.ps1` – (Optional) exports single-owner Teams for review
 
-05_Main.ps1: Orchestrates the process (entry point)
+`04_SendNotifications.ps1` – Sends personalized email alerts to owners
+
+`05_ReportToSelf.ps1` – Sends a summary report with log and stats
+
+`Run_TeamsNotifyJob.ps1` – Master script that runs all steps sequentially
